@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, ReactNode } from "react";
 import { OptionSelector } from "./option-selector";
 import { TextInput } from "./text-input";
 import clsx from "clsx";
 import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "./ui/button";
+import { useTxt2Img } from "./useStableDifusion";
+import { useScreen } from "usehooks-ts";
 
 export interface HistoryItem {
   type: "player" | "system";
@@ -53,7 +55,7 @@ export function GameInterface() {
   return (
     <div className="flex flex-col h-screen bg-black text-white">
       <ImageDisplay
-        currentImage={currentImage}
+        currentImage={<YandereGfMain />}
         isGeneratingImage={isGeneratingImage}
         audioEnabled={audioEnabled}
         toggleAudio={toggleAudio}
@@ -74,6 +76,37 @@ export function GameInterface() {
           waitingForInput={waitingForInput}
         />
       </div>
+    </div>
+  );
+}
+
+function YandereGfMain() {
+  const screen = useScreen();
+
+  const imgResult = useTxt2Img({
+    subject: "yandere, maid, girlfriend",
+    environment: "dark room, torture tools, mood lighting",
+    screen,
+  });
+
+  useEffect(() => {
+    imgResult.generateImages();
+  }, []);
+
+  if (imgResult.loading || !imgResult.images) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div className="relative w-screen h-screen flex items-center justify-center overflow-hidden">
+      <Button className="absolute top-2 left-2" onClick={imgResult.refresh}>
+        Refresh
+      </Button>
+      <img
+        src={`data:image/png;base64,${imgResult.images[0]}`}
+        alt=""
+        className="w-full h-full object-cover"
+      />
     </div>
   );
 }
@@ -178,7 +211,7 @@ export function MessageHistory({
 }
 
 interface ImageDisplayProps {
-  currentImage: string;
+  currentImage: ReactNode;
   isGeneratingImage: boolean;
   audioEnabled: boolean;
   toggleAudio: () => void;
@@ -186,23 +219,12 @@ interface ImageDisplayProps {
 
 export function ImageDisplay({
   currentImage,
-  isGeneratingImage,
   audioEnabled,
   toggleAudio,
 }: ImageDisplayProps) {
   return (
     <div className="relative w-full h-1/2 bg-gray-900">
-      {isGeneratingImage ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : (
-        <img
-          src={currentImage || "/placeholder.svg"}
-          alt="Scene"
-          className="w-full h-full object-cover"
-        />
-      )}
+      {currentImage}
 
       <Button
         variant="ghost"
