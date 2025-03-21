@@ -8,73 +8,25 @@ import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "./ui/button";
 import { useTxt2Img } from "./useStableDifusion";
 import { useScreen } from "usehooks-ts";
+import { useChat } from "./useChat";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 
 export interface HistoryItem {
-  type: "player" | "system";
+  role: "player" | "system";
   text: string;
 }
 
+const messageHistoryAtom = atom<{ role: string; content: string }[]>([]);
+const isGeneratingTextAtom = atom<boolean>(false);
+const isAudioEnabledAtom = atom<boolean>(false);
+
 export function GameInterface() {
-  const [currentScene, setCurrentScene] = useState<number>(0);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [playerName, setPlayerName] = useState<string>("");
-  const [showIntro, setShowIntro] = useState<boolean>(true);
-  const [showOptions, setShowOptions] = useState<boolean>(false);
-  const [options, setOptions] = useState<string[]>([]);
-  const [waitingForInput, setWaitingForInput] = useState<boolean>(false);
-  const [currentImage, setCurrentImage] = useState<string>(
-    "/placeholder.svg?height=512&width=512"
-  );
-  const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
-  const [isGeneratingText, setIsGeneratingText] = useState<boolean>(false);
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
-  const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
-  const [currentMessage, setCurrentMessage] = useState<string>(
-    "Welcome to your dynamic visual novel adventure. What's your name?"
-  );
-
-  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  const toggleAudio = () => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-    }
-    setAudioEnabled((prev) => !prev);
-    setIsSpeaking(false);
-  };
-
-  const handleTextInput = (input: string) => {
-    // Handle text input logic here
-  };
-
-  const handleOptionSelect = (option: string) => {
-    // Handle option selection logic here
-  };
-
   return (
     <div className="flex flex-col h-screen bg-black text-white">
-      <ImageDisplay
-        currentImage={<YandereGfMain />}
-        isGeneratingImage={isGeneratingImage}
-        audioEnabled={audioEnabled}
-        toggleAudio={toggleAudio}
-      />
-      <div className="flex-1 flex flex-col p-4 bg-gray-900 overflow-hidden">
-        <MessageHistory history={history} messagesEndRef={messagesEndRef} />
-        <CurrentMessage
-          isGeneratingText={isGeneratingText}
-          isSpeaking={isSpeaking}
-          currentMessage={currentMessage}
-        />
-        <InputArea
-          showOptions={showOptions}
-          options={options}
-          onOptionSelect={handleOptionSelect}
-          onTextSubmit={handleTextInput}
-          isGeneratingText={isGeneratingText}
-          waitingForInput={waitingForInput}
-        />
+      <ImageDisplay currentImage={<YandereGfMain />} />
+      <div className="flex-1 flex flex-col p-4 overflow-hidden z-10 ">
+        <MessageHistory />
+        <ChatBox />
       </div>
     </div>
   );
@@ -98,7 +50,7 @@ function YandereGfMain() {
   }
 
   return (
-    <div className="relative w-screen h-screen flex items-center justify-center overflow-hidden">
+    <div className="w-screen h-screen flex items-center justify-center overflow-hidden absolute">
       <Button className="absolute top-2 left-2" onClick={imgResult.refresh}>
         Refresh
       </Button>
@@ -111,36 +63,24 @@ function YandereGfMain() {
   );
 }
 
-interface InputAreaProps {
-  showOptions: boolean;
-  options: string[];
-  onOptionSelect: (option: string) => void;
-  onTextSubmit: (input: string) => void;
-  isGeneratingText: boolean;
-  waitingForInput: boolean;
-}
+export function ChatBox() {
+  const isGeneratingText = useAtom(isGeneratingTextAtom)[0];
+  const setMessages = useSetAtom(messageHistoryAtom);
+  const { isLoading, error, sendMessage } = useChat();
+  useEffect(() => {
+    error && console.error(error);
+  }, [error]);
 
-export function InputArea({
-  showOptions,
-  options,
-  onOptionSelect,
-  onTextSubmit,
-  isGeneratingText,
-  waitingForInput,
-}: InputAreaProps) {
-  return showOptions ? (
-    <OptionSelector
-      options={options}
-      onSelect={onOptionSelect}
-      disabled={isGeneratingText}
-    />
-  ) : (
+  return (
     <TextInput
-      onSubmit={onTextSubmit}
-      disabled={!waitingForInput || isGeneratingText}
-      placeholder={
-        waitingForInput ? "What will you do?" : "Waiting for the story..."
-      }
+      onSubmit={(text) => {
+        setMessages((prev) => [...prev, { role: "player", content: text }]);
+        sendMessage(text).then((response) => {
+          setMessages((prev) => [...prev, response]);
+        });
+      }}
+      disabled={isLoading || isGeneratingText}
+      placeholder={isLoading ? "What will you do?" : "Waiting for the story..."}
     />
   );
 }
@@ -181,47 +121,29 @@ export function CurrentMessage({
   );
 }
 
-interface MessageHistoryProps {
-  history: HistoryItem[];
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
-}
-
-export function MessageHistory({
-  history,
-  messagesEndRef,
-}: MessageHistoryProps) {
+function MessageHistory() {
+  const history = useAtomValue(messageHistoryAtom);
   return (
-    <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+    <div className="flex-1 overflow-y-auto mb-4 space-y-4 bg-blue-900/50 z-10">
       {history.map((item, index) => (
         <div
           key={index}
           className={clsx(
-            "p-3 rounded-lg max-w-[80%]",
-            item.type === "player"
+            "p-3 rounded-lg",
+            item.role === "player"
               ? "bg-primary text-primary-foreground ml-auto"
               : "bg-muted text-muted-foreground"
           )}
         >
-          {item.text}
+          {item.content}
         </div>
       ))}
-      <div ref={messagesEndRef} />
     </div>
   );
 }
 
-interface ImageDisplayProps {
-  currentImage: ReactNode;
-  isGeneratingImage: boolean;
-  audioEnabled: boolean;
-  toggleAudio: () => void;
-}
-
-export function ImageDisplay({
-  currentImage,
-  audioEnabled,
-  toggleAudio,
-}: ImageDisplayProps) {
+export function ImageDisplay({ currentImage }: { currentImage: ReactNode }) {
+  const [audioEnabled, setAudioEnabled] = useAtom(isAudioEnabledAtom);
   return (
     <div className="relative w-full h-1/2 bg-gray-900">
       {currentImage}
@@ -230,7 +152,7 @@ export function ImageDisplay({
         variant="ghost"
         size="icon"
         className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white"
-        onClick={toggleAudio}
+        onClick={() => setAudioEnabled((prev: boolean) => !prev)}
       >
         {audioEnabled ? (
           <Volume2 className="h-5 w-5" />

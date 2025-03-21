@@ -87,7 +87,8 @@ async function makeTxt2ImgRequest({
 }
 
 function makePrompt(subject: string, environment: string): string {
-  return `perfect quality, best quality, absolutely eye-catching, ambient occlusion, raytracing, 
+  return `perfect quality, best quality, absolutely eye-catching,
+  <lora:illustriousXL_stabilizer_v1.72:0.8> <lora:Rem:1> rem (re:zero), roswaal mansion maid uniform,
     ${subject},
     ${environment},
     ${subject}`;
