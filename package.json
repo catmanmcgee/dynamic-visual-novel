@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "npx tsx watch server.ts --exclude src/**/* --include server/**/*",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
