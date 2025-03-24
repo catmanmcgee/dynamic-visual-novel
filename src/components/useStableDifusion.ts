@@ -59,20 +59,18 @@ async function makeTxt2ImgRequest({
   width = Math.min(width ?? 896, 1024);
   height = Math.min(height ?? 1197, 1280);
   try {
-    const response = await fetch("http://127.0.0.1:7860/sdapi/v1/txt2img", {
+    const response = await fetch("/txt2img", {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(
-        makeRequest({
-          subject,
-          environment,
-          width,
-          height,
-        })
-      ),
+      body: JSON.stringify({
+        subject,
+        environment,
+        width,
+        height,
+      }),
     });
 
     if (!response.ok) {

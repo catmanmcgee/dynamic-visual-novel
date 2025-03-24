@@ -1,4 +1,14 @@
 import { useState } from "react";
+import { unmute } from "./unmute";
+
+let audioContext =
+  window.AudioContext || (window as any).webkitAudioContext
+    ? new (window.AudioContext || (window as any).webkitAudioContext)()
+    : (null as unknown as AudioContext);
+
+if (audioContext) {
+  unmute(audioContext);
+}
 
 export function useVoiceTranscription() {
   const [isLoading, setIsLoading] = useState(false);
@@ -26,12 +36,13 @@ export function useVoiceTranscription() {
       const data = await response.arrayBuffer(); // Fetch the .wav file as an ArrayBuffer
 
       // Play the .wav file using AudioContext
-      const audioContext = new AudioContext();
       const audioBuffer = await audioContext.decodeAudioData(data);
       const source = audioContext.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioContext.destination);
       source.start();
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsLoading(false);
     }

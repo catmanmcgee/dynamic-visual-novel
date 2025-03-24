@@ -1,33 +1,31 @@
 "use client";
 
-import { useState, useRef, useEffect, ReactNode } from "react";
-import { OptionSelector } from "./option-selector";
+import { useRef, useEffect, ReactNode } from "react";
 import { TextInput } from "./text-input";
 import clsx from "clsx";
-import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "./ui/button";
 import { useTxt2Img } from "./useStableDifusion";
 import { useScreen } from "usehooks-ts";
 import { useChat } from "./useChat";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import { useVoiceTranscription } from "./useVoiceTranscription";
+import { sampleSound, useVoiceTranscription } from "./useVoiceTranscription";
+import { SettingsBar } from "./settings-bar";
 
 export interface HistoryItem {
   role: "player" | "system";
   text: string;
 }
 
-const messageHistoryAtom = atomWithStorage<{ role: string; content: string }[]>(
-  "messageHistory",
-  []
-);
-const isGeneratingTextAtom = atom<boolean>(false);
-const isAudioEnabledAtom = atom<boolean>(false);
+export const messageHistoryAtom = atomWithStorage<
+  { role: string; content: string }[]
+>("messageHistory", []);
+export const isGeneratingTextAtom = atom<boolean>(false);
+export const isAudioEnabledAtom = atom<boolean>(false);
 
 export function GameInterface() {
   return (
-    <div className="flex flex-col h-screen bg-black text-white">
+    <div className="flex flex-col h-screen w-screen overflow-hiden bg-black text-white">
       <ImageDisplay currentImage={<YandereGfMain />} />
       <div className="flex-1 flex flex-col p-4 overflow-hidden z-10 min-h-[500px]">
         <MessageHistory />
@@ -132,20 +130,40 @@ export function CurrentMessage({
 }
 
 function MessageItem({ content, role }: { content: string; role: string }) {
-  const val = useVoiceTranscription();
+  const { isLoading, voiceTranscribe } = useVoiceTranscription();
 
   return (
-    <Button
-      onClick={() => val.voiceTranscribe(content)}
-      className={clsx(
-        "p-3 rounded-lg cursor-pointer w-100 text-wrap text-left",
-        role === "player"
-          ? "bg-primary text-primary-foreground ml-auto"
-          : "bg-muted text-muted-foreground"
+    <div className="flex flex-row">
+      {role !== "player" && (
+        <Button
+          onClick={() => {
+            const matches = content.matchAll(/"([^"]+)"/gm);
+            const text = [...matches].map((match) => match[1]).join("\n");
+
+            if (text) {
+              const sanitizedContent = text.replaceAll(/[~]+/g, "");
+              voiceTranscribe(sanitizedContent);
+            }
+          }}
+          className={clsx(
+            "w-8 h-8 flex items-center justify-center bg-primary mt-2"
+          )}
+        >
+          ▶
+        </Button>
       )}
-    >
-      {content}
-    </Button>
+      <div
+        className={clsx(
+          "p-3 rounded-lg text-wrap text-left w-full whitespace-pre-wrap",
+          isLoading && "animate-pulse bg-blue-900/80 rounded",
+          role === "player"
+            ? "bg-primary text-primary-foreground ml-auto"
+            : "bg-muted text-muted-foreground"
+        )}
+      >
+        {content}
+      </div>
+    </div>
   );
 }
 
@@ -179,23 +197,10 @@ function MessageHistory() {
 }
 
 export function ImageDisplay({ currentImage }: { currentImage: ReactNode }) {
-  const [audioEnabled, setAudioEnabled] = useAtom(isAudioEnabledAtom);
   return (
     <div className="relative w-full h-1/2 bg-gray-900">
       {currentImage}
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white"
-        onClick={() => setAudioEnabled((prev: boolean) => !prev)}
-      >
-        {audioEnabled ? (
-          <Volume2 className="h-5 w-5" />
-        ) : (
-          <VolumeX className="h-5 w-5" />
-        )}
-      </Button>
+      <SettingsBar />
     </div>
   );
 }
