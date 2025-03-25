@@ -1,9 +1,16 @@
 import { Application, Request, Response } from "express";
 
+let isGenerating = false;
+
 export function initTxt2ImgRoutes(app: Application): void {
   app.post("/txt2img", async (req: Request, res: Response) => {
     const { subject, environment, width, height } = req.body;
 
+    if (isGenerating) {
+      res.status(400).json({ error: "Already generating an image" });
+      return;
+    }
+    isGenerating = true;
     try {
       const response = await fetch("http://127.0.0.1:7860/sdapi/v1/txt2img", {
         method: "POST",
@@ -61,5 +68,6 @@ export function initTxt2ImgRoutes(app: Application): void {
       console.error("Error in txt2img route:", error);
       res.status(500).json({ error: "Internal server error" });
     }
+    isGenerating = false;
   });
 }

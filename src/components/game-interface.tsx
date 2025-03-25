@@ -9,7 +9,7 @@ import { useScreen } from "usehooks-ts";
 import { useChat } from "./useChat";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import { sampleSound, useVoiceTranscription } from "./useVoiceTranscription";
+import { useVoiceTranscription } from "./useVoiceTranscription";
 import { SettingsBar } from "./settings-bar";
 
 export interface HistoryItem {
@@ -19,7 +19,7 @@ export interface HistoryItem {
 
 export const messageHistoryAtom = atomWithStorage<
   { role: string; content: string }[]
->("messageHistory", []);
+>("messageHistory", [], undefined, { getOnInit: true });
 export const isGeneratingTextAtom = atom<boolean>(false);
 export const isAudioEnabledAtom = atom<boolean>(false);
 
@@ -45,11 +45,13 @@ function YandereGfMain() {
   });
 
   useEffect(() => {
-    imgResult.generateImages();
+    if (imgResult.images.length === 0) {
+      imgResult.generateImages();
+    }
   }, []);
 
   if (imgResult.loading || !imgResult.images) {
-    return <div>Loading...</div>;
+    return <div>It takes up to 45s to load an image...</div>;
   }
 
   return (
